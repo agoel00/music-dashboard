@@ -8,6 +8,15 @@ import matplotlib.pyplot as plt
 from io import StringIO 
 import pickle
 from sklearn import svm 
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+from wordcloud import WordCloud
+
+cid = 'c32268dc4ba3438cbb69715eaab346e5'
+secret = '0bbe809369164c23b0c88706ffd08522'
+client_credentials_manager = SpotifyClientCredentials(client_id=cid, client_secret=secret)
+sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+
 
 st.title("Music and Social Dashboard")
 st.markdown('Assessing your mental well-being through analysis of your music listening habits.')
@@ -125,18 +134,35 @@ def plot_radar(df, monthly):
     return fig
     #plt.show()
 
-
+def plot_genres(df):
+  n = (pd.unique(df['artist_name']))
+  x = df['artist_name'].value_counts()
+  if (len(x>30)):
+    top_artists = x[:30]
+    genre_list = []
+  else:
+    top_artists = x
+  for i in range(len(top_artists)):
+    result = sp.search(top_artists[i])
+    track = result['tracks']['items'][0]
+    artist = sp.artist(track['artists'][0]['external_urls']['spotify'])
+    artist_genre = artist['genres']
+    genre_list.extend(artist_genre)
+  unique_gen_dict = {}
+  for value in genre_list:
+    if value in unique_gen_dict.keys():
+      unique_gen_dict[value] += 1
+    else:
+      unique_gen_dict[value] = 1
+  wordcloud = WordCloud(
+    background_color='white',
+    width=1000,
+    height=500
+  ).generate_from_frequencies(unique_gen_dict)
+  return wordcloud
 
 ########################################
-if st.button('Get Repetitiveness Index'):
-  st.write(calc_ri(df))
 
-if st.sidebar.button('Show average acoustic features'):
-  st.pyplot(plot_radar(df,0))
-
-if st.sidebar.button('Show monthly averaged acoustic features'):
-  st.pyplot(plot_radar(df,1))
-  #st.pyplot(plot_radar(df))
 
 choices = ['Never', 'Rarely', 'Sometimes', 'Often', 'Always']
 qs = [
@@ -197,13 +223,27 @@ if 'submitted' in st.session_state:
           eval("st.session_state.value{}".format(i))
         )
       responses = np.array([mapping[i] for i in responses_list]).reshape(1, -1)
-      print(clf.predict(responses))
+      predict_probabs = (clf.predict_proba(responses)[0])*100
       if clf.predict(responses)[0]==0:
-        st.markdown('## You are not depressed!')
+        st.markdown('## {:.2f}% likelihood of being at no risk of depression'.format(predict_probabs[0]))
       else:
-        st.markdown('## You are at risk of depression')
+        st.markdown('## {:.2f}% likelihood of being at risk of depression'.format(predict_probabs[1]))
       reset()
 
     # if submitted:
     #   st.write('Predicted value: {}'.format(4.3))
     #   st.write('hello world')
+
+
+if st.button('Get Repetitiveness Index'):
+  st.write(calc_ri(df))
+
+if st.sidebar.button('Show average acoustic features'):
+  st.pyplot(plot_radar(df,0))
+
+if st.sidebar.button('Show monthly averaged acoustic features'):
+  st.pyplot(plot_radar(df,1))
+  #st.pyplot(plot_radar(df))
+
+if st.sidebar.button('Show genres of artists I listen to the most'):
+  st.image(plot_genres(df).to_array())

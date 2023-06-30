@@ -4,3 +4,5 @@ numpy
 plotly==5.10.0
 matplotlib
 scikit-learn
+spotipy
+wordcloud
