@@ -126,13 +126,11 @@ def plot_radar(df, monthly):
     #   ax.fill(theta, values, alpha=0.3)
     
     for col in df1.columns:
-      plots = []
-      print(col)
       vals = df1[col]
-      plt.plot(month,vals, label = col)
-    plt.legend()
+      ax.plot(month,vals)
+    # plt.legend()
     plt.title("Monthly averaged acoustic features")
-    
+    plt.legend()
     return fig
     #plt.show()
 
